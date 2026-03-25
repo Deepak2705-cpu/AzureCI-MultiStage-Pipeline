@@ -1,1 +1,5 @@
-
+resource_group_name   = "deepak-prod-rg"
+location              = "East US"
+environment           = "prod"
+vnet_address_space    = "10.2.0.0/16"
+subnet_address_prefix = "10.2.1.0/24"

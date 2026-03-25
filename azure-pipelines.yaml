@@ -1,1 +1,226 @@
+trigger:
+- main
+
+variables:
+  terraformVersion: '1.14.3'
+
+stages:
+
+# -----------------------------
+# STAGE 1 - VALIDATE
+# -----------------------------
+- stage: Validate
+  displayName: Terraform Validate
+
+  jobs:
+  - job: Validate
+    pool:
+      name: Default
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    - task: AzureCLI@2
+      displayName: Terraform Init & Validate
+      inputs:
+        azureSubscription: 'terraform-service-connection2'
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          cd terraform
+          terraform init
+          terraform validate
+
+
+# -----------------------------
+# STAGE 2 - PLAN DEV
+# -----------------------------
+- stage: PlanDev
+  displayName: Terraform Plan DEV
+  dependsOn: Validate
+
+  jobs:
+  - job: PlanDev
+    pool:
+      name: Default
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    - task: AzureCLI@2
+      displayName: Terraform Plan DEV
+      inputs:
+        azureSubscription: 'terraform-service-connection2'
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          cd terraform
+          terraform init
+          terraform plan -var-file="dev.tfvars"
+
+
+# -----------------------------
+# STAGE 3 - APPLY DEV
+# -----------------------------
+- stage: ApplyDev
+  displayName: Apply DEV
+  dependsOn: PlanDev
+
+  jobs:
+  - deployment: DeployDev
+    environment: terraform-dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: AzureCLI@2
+            displayName: Terraform Apply DEV
+            inputs:
+              azureSubscription: 'terraform-service-connection2'
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                cd terraform
+                terraform init
+                terraform apply -var-file="dev.tfvars" -auto-approve
+
+
+# -----------------------------
+# STAGE 4 - PLAN STAGE
+# -----------------------------
+- stage: PlanStage
+  displayName: Terraform Plan STAGE
+  dependsOn: ApplyDev
+
+  jobs:
+  - job: PlanStage
+    pool:
+      name: Default
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    - task: AzureCLI@2
+      displayName: Terraform Plan STAGE
+      inputs:
+        azureSubscription: 'terraform-service-connection2'
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          cd terraform
+          terraform init
+          terraform plan -var-file="stage.tfvars"
+
+
+# -----------------------------
+# STAGE 5 - APPLY STAGE
+# -----------------------------
+- stage: ApplyStage
+  displayName: Apply STAGE
+  dependsOn: PlanStage
+
+  jobs:
+  - deployment: DeployStage
+    environment: terraform-stage
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: AzureCLI@2
+            displayName: Terraform Apply STAGE
+            inputs:
+              azureSubscription: 'terraform-service-connection2'
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                cd terraform
+                terraform init
+                terraform apply -var-file="stage.tfvars" -auto-approve
+
+
+# -----------------------------
+# STAGE 6 - PLAN PROD
+# -----------------------------
+- stage: PlanProd
+  displayName: Terraform Plan PROD
+  dependsOn: ApplyStage
+
+  jobs:
+  - job: PlanProd
+    pool:
+      name: Default
+
+    steps:
+    - checkout: self
+
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: $(terraformVersion)
+
+    - task: AzureCLI@2
+      displayName: Terraform Plan PROD
+      inputs:
+        azureSubscription: 'terraform-service-connection2'
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          cd terraform
+          terraform init
+          terraform plan -var-file="prod.tfvars"
+
+
+# -----------------------------
+# STAGE 7 - APPLY PROD
+# -----------------------------
+- stage: ApplyProd
+  displayName: Apply PROD
+  dependsOn: PlanProd
+
+  jobs:
+  - deployment: DeployProd
+    environment: terraform-prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: $(terraformVersion)
+
+          - task: AzureCLI@2
+            displayName: Terraform Apply PROD
+            inputs:
+              azureSubscription: 'terraform-service-connection2'
+              scriptType: pscore
+              scriptLocation: inlineScript
+              inlineScript: |
+                cd terraform
+                terraform init
+                terraform apply -var-file="prod.tfvars" -auto-approve
 
